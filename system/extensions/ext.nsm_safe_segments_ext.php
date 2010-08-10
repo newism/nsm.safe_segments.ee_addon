@@ -97,6 +97,8 @@ class Nsm_safe_segments_ext {
 		global $LANG;
 		$settings = array();
 		$settings['safe_segments'] = 'success|error';
+		$settings['break_segments'] = '';
+		$settings['break_categories'] = array('r', array('y' => "yes", 'n' => "no"), 'n');
 		$settings['check_for_updates'] = array('r', array('y' => "yes", 'n' => "no"), 'y');
 		return $settings;
 	}
@@ -107,11 +109,39 @@ class Nsm_safe_segments_ext {
 	function sessions_start(&$obj)
 	{
 		global $IN, $PREFS, $SESS;
+		$segments			= $this->settings['safe_segments'];
+		$breaks				= (isset($this->settings['break_segments']) && $this->settings['break_segments']) ? explode("|", $this->settings['break_segments']) : false;
+		if($this->settings['break_categories'] == 'y') {
+			# we're supposed to break everything after the category key word
+			
+		}
 
 		// if this is a page request
 		if(REQ == "PAGE")
 		{
-			$IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
+			$dirty_array		= explode('/', substr($IN->URI, 1, -1));
+			$clean_array		= array();				# contains URL segments
+			$pulled_array		= array();				# contains ignored segments
+			
+			$break				= false;
+			$dsid				= 0;					# dirty segment id
+			
+			
+			foreach ($dirty_array as $segment) {
+				if (!preg_match('#^('.$segments.')$#', $segment) && $break == false) {
+					#segment is clean
+					array_push($clean_array, $segment);
+					$break = in_array($segment, $breaks);
+				} else {
+					#segment isn't clean
+					array_push($pulled_array, $segment);
+					++$i;
+					$IN->global_vars["safe_segment_$i"] = $segment;
+				}
+			}
+			# var_dump($dirty_array, $IN->global_vars);
+			$IN->URI = (count($clean_array)) ? "/".implode('/', $clean_array)."/" : "/";
+			# $IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
 			$IN->parse_qstr();
 		}
 	}
@@ -161,7 +191,7 @@ class Nsm_safe_segments_ext {
 	/**
 	* Updates the extension
 	*
-	* If the exisiting version is below 1.2 then the update process changes some
+	* If the existing version is below 1.2 then the update process changes some
 	* method names. This may cause an error which can be resolved by reloading
 	* the page.
 	*
