@@ -109,15 +109,17 @@ class Nsm_safe_segments_ext {
 	function sessions_start(&$obj)
 	{
 		global $IN, $PREFS, $SESS;
+		
 		$segments			= $this->settings['safe_segments'];
-		$breaks				= (isset($this->settings['break_segments']) && $this->settings['break_segments']) ? explode("|", $this->settings['break_segments']) : false;
+		$breaks				= (isset($this->settings['break_segments']) && $this->settings['break_segments']) ? explode("|", $this->settings['break_segments']) : array();
+		
 		if(isset($this->settings['break_categories']) && $this->settings['break_categories'] == 'y') {
 			# we're supposed to break everything after the category key word
-			$cat_word = $PREFS->core_ini["reserved_category_word"];
-			# $segments[] = $cat_word;
-			# $breaks[] = $cat_word;
+			$cat_word		= $PREFS->core_ini["reserved_category_word"];
+			$segments		.= "|".$cat_word;
+			$breaks[]		= $cat_word;
 		}
-
+		
 		// if this is a page request
 		if(REQ == "PAGE")
 		{
@@ -127,7 +129,6 @@ class Nsm_safe_segments_ext {
 			
 			$break				= false;
 			$dsid				= 0;					# dirty segment id
-			
 			
 			foreach ($dirty_array as $segment) {
 				if (!preg_match('#^('.$segments.')$#', $segment) && $break == false) {
@@ -139,10 +140,11 @@ class Nsm_safe_segments_ext {
 					array_push($pulled_array, $segment);
 					++$i;
 					$IN->global_vars["safe_segment_$i"] = $segment;
+					$break = in_array($segment, $breaks);
 				}
 			}
-			# var_dump("<pre>", get_defined_vars(), "</pre>");
 			$IN->URI = (count($clean_array)) ? "/".implode('/', $clean_array)."/" : "/";
+			# old version
 			# $IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
 			$IN->parse_qstr();
 		}
