@@ -111,9 +111,11 @@ class Nsm_safe_segments_ext {
 		global $IN, $PREFS, $SESS;
 		$segments			= $this->settings['safe_segments'];
 		$breaks				= (isset($this->settings['break_segments']) && $this->settings['break_segments']) ? explode("|", $this->settings['break_segments']) : false;
-		if($this->settings['break_categories'] == 'y') {
+		if(isset($this->settings['break_categories']) && $this->settings['break_categories'] == 'y') {
 			# we're supposed to break everything after the category key word
-			
+			$cat_word = $PREFS->core_ini["reserved_category_word"];
+			# $segments[] = $cat_word;
+			# $breaks[] = $cat_word;
 		}
 
 		// if this is a page request
@@ -139,7 +141,7 @@ class Nsm_safe_segments_ext {
 					$IN->global_vars["safe_segment_$i"] = $segment;
 				}
 			}
-			# var_dump($dirty_array, $IN->global_vars);
+			# var_dump("<pre>", get_defined_vars(), "</pre>");
 			$IN->URI = (count($clean_array)) ? "/".implode('/', $clean_array)."/" : "/";
 			# $IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
 			$IN->parse_qstr();
