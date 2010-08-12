@@ -143,7 +143,7 @@ class Nsm_safe_segments_ext {
 					$break = in_array($segment, $breaks);
 				}
 			}
-			$IN->URI = (count($clean_array)) ? "/".implode('/', $clean_array)."/" : "/";
+			$IN->URI = (count($clean_array) && $clean_array[0]) ? "/".implode('/', $clean_array)."/" : "";
 			# old version
 			# $IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
 			$IN->parse_qstr();
