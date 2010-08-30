@@ -120,6 +120,10 @@ class Nsm_safe_segments_ext {
 			$breaks[]		= $cat_word;
 		}
 		
+		# flag when a break occurs
+		$break_check = array_fill_keys($breaks, false);
+		
+		
 		// if this is a page request
 		if(REQ == "PAGE")
 		{
@@ -134,13 +138,26 @@ class Nsm_safe_segments_ext {
 				if (!preg_match('#^('.$segments.')$#', $segment) && $break == false) {
 					#segment is clean
 					array_push($clean_array, $segment);
-					$break = in_array($segment, $breaks);
+					
+					# note: variable assignment in conditional is intentional
+					if ($break = in_array($segment, $breaks)) {
+						if (!$break_check[$segment]) $break_check[$segment] = $i;
+					}
 				} else {
 					#segment isn't clean
 					array_push($pulled_array, $segment);
 					++$i;
 					$IN->global_vars["safe_segment_$i"] = $segment;
-					$break = in_array($segment, $breaks);
+					
+					# assign numbered vars by break, too
+					foreach ($break_check as $break_k => $break_i) {
+						$IN->global_vars["ss_".$break_k."_".($i - $break_i)] = $segment;
+					}
+					
+					# note: variable assignment in conditional is intentional
+					if ($break = in_array($segment, $breaks)) {
+						if (!$break_check[$segment]) $break_check[$segment] = $i;
+					}
 				}
 			}
 			$IN->URI = (count($clean_array) && $clean_array[0]) ? "/".implode('/', $clean_array)."/" : "";
