@@ -97,6 +97,8 @@ class Nsm_safe_segments_ext {
 		global $LANG;
 		$settings = array();
 		$settings['safe_segments'] = 'success|error';
+		$settings['break_segments'] = '';
+		$settings['break_categories'] = array('r', array('y' => "yes", 'n' => "no"), 'n');
 		$settings['check_for_updates'] = array('r', array('y' => "yes", 'n' => "no"), 'y');
 		return $settings;
 	}
@@ -107,11 +109,60 @@ class Nsm_safe_segments_ext {
 	function sessions_start(&$obj)
 	{
 		global $IN, $PREFS, $SESS;
-
+		
+		$segments			= $this->settings['safe_segments'];
+		$breaks				= (isset($this->settings['break_segments']) && $this->settings['break_segments']) ? explode("|", $this->settings['break_segments']) : array();
+		
+		if(isset($this->settings['break_categories']) && $this->settings['break_categories'] == 'y') {
+			# we're supposed to break everything after the category key word
+			$cat_word		= $PREFS->core_ini["reserved_category_word"];
+			$segments		.= "|".$cat_word;
+			$breaks[]		= $cat_word;
+		}
+		
+		# flag when a break occurs
+		$break_check = array_fill_keys($breaks, false);
+		
+		
 		// if this is a page request
 		if(REQ == "PAGE")
 		{
-			$IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
+			$dirty_array		= explode('/', substr($IN->URI, 1, -1));
+			$clean_array		= array();				# contains URL segments
+			$pulled_array		= array();				# contains ignored segments
+			
+			$break				= false;
+			$dsid				= 0;					# dirty segment id
+			
+			foreach ($dirty_array as $segment) {
+				if (!preg_match('#^('.$segments.')$#', $segment) && $break == false) {
+					#segment is clean
+					array_push($clean_array, $segment);
+					
+					# note: variable assignment in conditional is intentional
+					if ($break = in_array($segment, $breaks)) {
+						if (!$break_check[$segment]) $break_check[$segment] = $i;
+					}
+				} else {
+					#segment isn't clean
+					array_push($pulled_array, $segment);
+					++$i;
+					$IN->global_vars["safe_segment_$i"] = $segment;
+					
+					# assign numbered vars by break, too
+					foreach ($break_check as $break_k => $break_i) {
+						$IN->global_vars["ss_".$break_k."_".($i - $break_i)] = $segment;
+					}
+					
+					# note: variable assignment in conditional is intentional
+					if ($break = in_array($segment, $breaks)) {
+						if (!$break_check[$segment]) $break_check[$segment] = $i;
+					}
+				}
+			}
+			$IN->URI = (count($clean_array) && $clean_array[0]) ? "/".implode('/', $clean_array)."/" : "";
+			# old version
+			# $IN->URI = preg_replace("#/(".$this->settings['safe_segments'].")/#", "/", $IN->URI);
 			$IN->parse_qstr();
 		}
 	}
@@ -161,7 +212,7 @@ class Nsm_safe_segments_ext {
 	/**
 	* Updates the extension
 	*
-	* If the exisiting version is below 1.2 then the update process changes some
+	* If the existing version is below 1.2 then the update process changes some
 	* method names. This may cause an error which can be resolved by reloading
 	* the page.
 	*
